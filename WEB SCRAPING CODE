@@ -1,0 +1,84 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import re
+
+prod_name = []
+prices = []
+descrip = []    
+ratings = []
+RAM = []
+processor = []
+
+for i in range(1,11):
+    url = 'https://www.flipkart.com/search?q=laptops+under+80k&sid=6bo%2Cb5g&as=on&as-show=on&otracker=AS_QueryStore_OrganicAutoSuggest_1_13_na_na_na&otracker1=AS_QueryStore_OrganicAutoSuggest_1_13_na_na_na&as-pos=1&as-type=HISTORY&suggestionId=laptops+under+80k%7CLaptops&requestId=b19a9237-30ee-414d-ba58-5ff4d9a80878&page='+str(i)
+
+    page = requests.get(url)
+    try:
+        soup = BeautifulSoup(page.text,"lxml")
+        cont = soup.find("div",class_ = "_1YokD2 _3Mn1Gg")
+
+        names = cont.find_all("div",class_ = "_4rR01T")
+        for i in names:
+            n = i.text
+            prod_name.append(n)
+
+    
+        price = cont.find_all("div",class_ = "_30jeq3 _1_WHN1")
+        for i in price:
+            p = i.text
+            prices.append(p)
+
+        des = cont.find_all("ul",class_ = "_1xgFaf")
+        for i in des:
+            d = i.text
+            descrip.append(d)
+
+            if "GB" in d:
+                r = re.findall(r'\d+', d.split("GB")[0])[-1]
+                RAM.append(int(r))
+            else:
+                RAM.append("N/A")
+
+        
+        
+            if re.search(r"\b(AMD|Intel)\b", d):
+                if "AMD" in d:
+                    p = re.findall(r"AMD\s+\w+\s*\d+", d)
+                    if p:
+                        processor.append(p[0])
+                    else:
+                        processor.append("N/A")
+                elif "Intel" in d:
+                    p = re.findall(r"Intel\s+(?:Core\s*i\d|\w+\s*\d+)\s*(?:Processor)?", d)
+
+                    if p:
+                        processor.append(p[0])
+                    else:
+                        processor.append("N/A")
+            else:
+                processor.append("N/A")
+
+
+        rev = cont.find_all('div', class_ = '_3LWZlK')
+        for i in rev:
+            if (i):
+                ratings.append(i.text)
+            else:
+                ratings.append("NULL")
+
+        max_len = max(len(prod_name), len(prices), len(descrip), len(ratings))
+        prod_name += ['N/A'] * (max_len - len(prod_name))
+        prices += ['N/A'] * (max_len - len(prices))
+        descrip += ['N/A'] * (max_len - len(descrip))
+        ratings += ['N/A'] * (max_len - len(ratings))
+        RAM += ['N/A'] * (max_len - len(RAM))
+        processor += ['N/A'] * (max_len - len(processor))
+
+
+        df = pd.DataFrame({"Product_name":prod_name,"Prices":prices,"Description":descrip,"Ratings":ratings,"RAM(in GB)":RAM,"Processor":processor})
+
+        df.to_csv("flipkart_laptops_under_80k.csv", mode='w')
+
+    except Exception as err:
+        print('Sorry for inconvinience :(')
